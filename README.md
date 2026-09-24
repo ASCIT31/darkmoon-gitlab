@@ -97,9 +97,11 @@ report artifact, which is off by default. See `CONTRACT.md` §4.
 
 ## Runner requirements
 
-`darkmoon-ci` is a Node CLI (Node ≥ 18). `python3` (≥ 3.8) is used for the report
-mapping (both are in the default `node:20-slim` image once the CLI is installed;
-use `bootstrap-url` or a custom image to provide the CLI).
+`darkmoon-ci` is a Node CLI (Node ≥ 18); `python3` (≥ 3.8) is used for the report
+mapping. The job image must provide **both**. `node:20-slim` (the default) ships
+Node but **not** python3 — add it (`apt-get install -y python3`) or use a custom
+image that bundles `darkmoon-ci` + `python3`. The job fails fast with a clear
+message if either is missing.
 
 - **Pro mode**: a runner with the CLI + `python3` and network access to the Pro
   REST API.
