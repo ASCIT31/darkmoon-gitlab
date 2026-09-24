@@ -141,7 +141,7 @@ message if either is missing.
 
 ```bash
 # from the published package (recommended):
-npm i -g @darkmoon/client         # provides the `darkmoon-ci` bin
+npm i -g @darkmoon_ai/client         # provides the `darkmoon-ci` bin
 # or a pinned tarball built from source:
 #   cd darkmoon-client && npm run build && npm pack
 #   npm i -g darkmoon-client-<version>.tgz

@@ -1,7 +1,7 @@
 # What this component consumes from `darkmoon-ci`
 
 This GitLab component is a thin consumer of the portable **`darkmoon-ci`** CLI
-shipped by `@darkmoon/client` (its own `CONTRACT.md` is the frozen source of
+shipped by `@darkmoon_ai/client` (its own `CONTRACT.md` is the frozen source of
 truth — `/home/mehdi/darkmoon-client/CONTRACT.md`, `CONTRACT_VERSION = 1.0.0`).
 The component never reimplements the CLI; it invokes it and maps its output to
 GitLab report formats.
