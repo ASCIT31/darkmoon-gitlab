@@ -9,6 +9,26 @@ Pro** (REST API).
 This repository ships one component: **`scan`**
 (`templates/scan/template.yml`).
 
+## Screenshots
+
+Produced by running the **real component job** on a genuine `gitlab-runner`
+(`test/run_runner_e2e.sh` flow) against the synthetic **Demo Shop** campaign
+(`demo-shop.local`). The reports are the actual `gl-code-quality-report.json` /
+`gl-sast-report.json` artifacts (schema-validated in CI).
+
+**CI job log** — real `gitlab-runner 15.11.1` output: the CLI launches → waits →
+completes, the mapper emits both reports, and the findings gate fails the job
+(exit 2):
+
+![GitLab CI job log](docs/screenshots/gitlab-job-log.png)
+
+**Code Quality** — a local render of the **real** `gl-code-quality-report.json`
+artifact, shown the way it populates the merge-request **Code Quality** widget
+and the pipeline **Code Quality** tab (the live MR widget needs a GitLab
+instance):
+
+![Code Quality report](docs/screenshots/gitlab-code-quality.png)
+
 > The component wraps the portable `darkmoon-ci` CLI. It does not embed the
 > scanning engine. See [`CONTRACT.md`](CONTRACT.md) for the exact CLI + JSON
 > interface it consumes.
