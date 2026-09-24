@@ -36,7 +36,7 @@ on the command line and never prints them.
 | Mode | Required variables |
 |------|--------------------|
 | OSS  | `DARKMOON_LICENSE_KEY`, `OPENROUTER_PROVIDER`, `OPENCODE_MODEL`, `OPENROUTER_API_KEY` |
-| Pro  | `DARKMOON_API_TOKEN` (+ `base-url` input, or `DARKMOON_BASE_URL`) |
+| Pro  | `DARKMOON_PRO_TOKEN` (or `DARKMOON_PRO_USER` + `DARKMOON_PRO_PASS`) + the `pro-url` input (or `DARKMOON_PRO_URL`) |
 
 ### Non-blocking (report but don't fail the pipeline)
 
@@ -45,32 +45,35 @@ include:
   - component: $CI_SERVER_FQDN/<your-namespace>/darkmoon/scan@1.0.0
     inputs:
       target: "https://staging.example.com"
-      fail-on: high
-      allow_failure_exit_codes: [4]   # tolerate the findings gate; real errors still fail
+      fail-on: "critical,high"
+      allow_failure_exit_codes: [2]   # tolerate the findings gate; real errors still fail
 ```
 
-The findings gate is exit code **4**. The default `allow_failure_exit_codes`
-(`[250]`, a code the CLI never emits) makes the job **block**. Listing `4` makes
-the gate non-blocking while genuine tool errors (exit `2`/`3`/`5`) still fail the
+The findings gate is CLI exit code **2**. The default `allow_failure_exit_codes`
+(`[250]`, a code the CLI never emits) makes the job **block**. Listing `2` makes
+the gate non-blocking while genuine tool/usage errors (exit `1`) still fail the
 pipeline.
 
 ## Inputs
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `target` | *(required)* | Target URL/host, or a full Darkmoon target line. |
-| `mode` | `auto` | `auto` (Pro if token+base-url present, else OSS), `oss`, or `pro`. |
-| `base-url` | `""` | Pro REST API base URL, or OSS client install base. |
-| `focus` | `""` | Comma-separated attack focus (Darkmoon `FOCUS=`). |
-| `severity` | `""` | Global max severity cap (Darkmoon `SEVERITY=`). |
-| `fail-on` | `high` | Minimum severity that trips the findings gate. `none` disables. |
-| `timeout` | `""` | Scan timeout (seconds) passed to `darkmoon-ci`. |
+| `target` | *(required)* | Target URL/host. `focus`/`severity` are folded in as `FOCUS=`/`SEVERITY=`. |
+| `mode` | `auto` | `auto` (Pro if URL/token present, else OSS), `oss`, or `pro`. |
+| `pro-url` | `""` | Darkmoon Pro REST API base URL (`--pro-url`; env `DARKMOON_PRO_URL`). |
+| `focus` | `""` | Comma-separated attack focus, folded into the target as `FOCUS=`. |
+| `severity` | `""` | Max severity cap, folded into the target as `SEVERITY=`. |
+| `fail-on` | `critical,high` | Comma-separated **set** of severities that fail the build. Empty = never fail on findings. |
+| `timeout` | `""` | Hard timeout (seconds) for the run (`--timeout`). |
+| `oss-data-dir` | `""` | OSS data dir with `campaigns/` + `vulnerabilities/` (`--oss-data-dir`). |
+| `oss-reports-dir` | `""` | OSS reports dir (`--oss-reports-dir`). |
+| `oss-script` | `""` | Path to `darkmoon.sh` (`--oss-script`). |
 | `sast-report` | `true` | Also emit `gl-sast-report.json`. |
-| `expose-full-report` | `false` | Attach the full markdown report + native JSON as (internal) artifacts. |
+| `expose-full-report` | `false` | Attach the full (redacted) report + normalized findings JSON as internal artifacts. |
 | `artifacts-expire-in` | `1 week` | Artifact expiry. |
-| `allow_failure_exit_codes` | `[250]` | Exit codes tolerated by the job. `[4]` = non-blocking gate. |
+| `allow_failure_exit_codes` | `[250]` | Exit codes tolerated by the job. `[2]` = non-blocking gate. |
 | `bootstrap-url` | `""` | If `darkmoon-ci` is absent, download & run this installer first. |
-| `image` | `python:3.12-slim` | Image for docker-executor runners (shell runners ignore it). |
+| `image` | `node:20-slim` | Image for docker-executor runners (shell runners ignore it). |
 | `stage` | `test` | Stage for the job (must exist in the pipeline). |
 | `job-name` | `darkmoon_scan` | Name of the generated job. |
 
@@ -94,11 +97,26 @@ report artifact, which is off by default. See `CONTRACT.md` §4.
 
 ## Runner requirements
 
-- **Pro mode**: a runner whose image provides `darkmoon-ci` + `python3` (≥ 3.8),
-  or set `bootstrap-url` to install the CLI. Network access to the Pro API.
+`darkmoon-ci` is a Node CLI (Node ≥ 18). `python3` (≥ 3.8) is used for the report
+mapping (both are in the default `node:20-slim` image once the CLI is installed;
+use `bootstrap-url` or a custom image to provide the CLI).
+
+- **Pro mode**: a runner with the CLI + `python3` and network access to the Pro
+  REST API.
 - **OSS mode**: `darkmoon-ci` drives the local Darkmoon Docker engine, so use a
   runner with Docker access (a **shell** executor on a Docker host, or
-  Docker-in-Docker). `python3` must be available for report mapping.
+  Docker-in-Docker), and point `oss-data-dir`/`oss-reports-dir`/`oss-script` at
+  the engine's mounted data.
+
+### Installing the CLI on the runner
+
+```bash
+# from the published package (recommended):
+npm i -g @darkmoon/client         # provides the `darkmoon-ci` bin
+# or a pinned tarball built from source:
+#   cd darkmoon-client && npm run build && npm pack
+#   npm i -g darkmoon-client-<version>.tgz
+```
 
 ## Severity mapping
 
