@@ -110,6 +110,13 @@ message if either is missing.
   Docker-in-Docker), and point `oss-data-dir`/`oss-reports-dir`/`oss-script` at
   the engine's mounted data.
 
+> **OSS concurrency (important).** OSS runs share one on-disk data directory and
+> the client correlates the new campaign by snapshot-diff + session-id + mtime.
+> Run **one Darkmoon container / compose-project per CI job** (do not fan out
+> parallel OSS jobs against the same data dir) or campaigns can be mis-attributed.
+> The client emits a collision warning when it detects this; Pro mode is not
+> affected. See `CONTRACT.md` §3.
+
 ### Installing the CLI on the runner
 
 ```bash
