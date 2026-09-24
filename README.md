@@ -20,14 +20,14 @@ Produced by running the **real component job** on a genuine `gitlab-runner`
 completes, the mapper emits both reports, and the findings gate fails the job
 (exit 2):
 
-![GitLab CI job log](docs/screenshots/gitlab-job-log.png)
+![GitLab CI job log](https://raw.githubusercontent.com/ASCIT31/darkmoon-gitlab/master/docs/screenshots/gitlab-job-log.png)
 
 **Code Quality** — a local render of the **real** `gl-code-quality-report.json`
 artifact, shown the way it populates the merge-request **Code Quality** widget
 and the pipeline **Code Quality** tab (the live MR widget needs a GitLab
 instance):
 
-![Code Quality report](docs/screenshots/gitlab-code-quality.png)
+![Code Quality report](https://raw.githubusercontent.com/ASCIT31/darkmoon-gitlab/master/docs/screenshots/gitlab-code-quality.png)
 
 > The component wraps the portable `darkmoon-ci` CLI. It does not embed the
 > scanning engine. See [`CONTRACT.md`](CONTRACT.md) for the exact CLI + JSON
