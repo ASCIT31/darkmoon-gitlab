@@ -1,0 +1,167 @@
+spec:
+  inputs:
+    # --- placement ---
+    job-name:
+      default: darkmoon_scan
+      description: "Name of the generated job."
+    stage:
+      default: test
+      description: "Pipeline stage for the job. Must exist in the including pipeline."
+    image:
+      default: "python:3.12-slim"
+      description: >-
+        Container image for docker-executor runners. It must provide `darkmoon-ci`
+        and `python3` (>= 3.8), or set `bootstrap-url` to install the CLI at
+        runtime. Shell-executor runners ignore this value.
+
+    # --- what to scan (mirrors the frozen contract) ---
+    mode:
+      default: auto
+      options: [auto, oss, pro]
+      description: "auto = Pro if a token+base-url are set, else OSS. See CONTRACT.md."
+    target:
+      description: "REQUIRED. Target URL/host, or a full Darkmoon target line."
+    base-url:
+      default: ""
+      description: "Pro REST API base URL, or OSS client install base. Optional."
+    focus:
+      default: ""
+      description: "Comma-separated attack focus (Darkmoon FOCUS=). Optional."
+    severity:
+      default: ""
+      description: "Global max severity cap (Darkmoon SEVERITY=): info|low|medium|high|critical. Empty = no cap."
+    fail-on:
+      default: high
+      options: [none, info, low, medium, high, critical]
+      description: "Minimum severity that trips the findings gate (CLI exit 4)."
+    timeout:
+      default: ""
+      description: "Scan timeout in seconds passed to darkmoon-ci. Optional."
+
+    # --- reports & artifacts ---
+    output-dir:
+      default: darkmoon
+      description: "Directory darkmoon-ci writes native artifacts into."
+    sast-report:
+      type: boolean
+      default: true
+      description: "Also emit a GitLab SAST report (gl-sast-report.json)."
+    expose-full-report:
+      type: boolean
+      default: false
+      description: >-
+        Attach the FULL markdown report and native findings JSON as plain
+        (internal) artifacts. Off by default (threat model §4): shared surfaces
+        only ever carry the redaction-safe summary.
+    artifacts-expire-in:
+      default: "1 week"
+      description: "Expiry for the emitted artifacts."
+
+    # --- blocking / non-blocking ---
+    allow_failure_exit_codes:
+      type: array
+      default: [250]
+      description: >-
+        Exit codes for which the job is allowed to fail. Default [250] is a code
+        darkmoon-ci never emits, so the job BLOCKS on findings. Set to [4] for a
+        NON-BLOCKING findings gate (findings warn but do not fail the pipeline;
+        real tool errors 2/3/5 still fail it).
+
+    # --- CLI install (optional) ---
+    bootstrap-url:
+      default: ""
+      description: >-
+        If darkmoon-ci is absent, download & run this installer (curl | sh)
+        before scanning. Leave empty when the image already bundles the CLI.
+
+---
+
+"$[[ inputs.job-name ]]":
+  stage: $[[ inputs.stage ]]
+  image: $[[ inputs.image ]]
+  variables:
+    DM_MODE: "$[[ inputs.mode ]]"
+    DM_TARGET: "$[[ inputs.target ]]"
+    DM_BASE_URL: "$[[ inputs.base-url ]]"
+    DM_FOCUS: "$[[ inputs.focus ]]"
+    DM_SEVERITY: "$[[ inputs.severity ]]"
+    DM_FAIL_ON: "$[[ inputs.fail-on ]]"
+    DM_TIMEOUT: "$[[ inputs.timeout ]]"
+    DM_OUTPUT_DIR: "$[[ inputs.output-dir ]]"
+    DM_EMIT_SAST: "$[[ inputs.sast-report ]]"
+    DM_EXPOSE_FULL: "$[[ inputs.expose-full-report ]]"
+    DM_BOOTSTRAP_URL: "$[[ inputs.bootstrap-url ]]"
+  script:
+    - |
+      # Darkmoon GitLab component — scan job.
+      # Secrets (DARKMOON_LICENSE_KEY / DARKMOON_API_TOKEN / OPENROUTER_API_KEY …)
+      # come from masked+protected CI/CD variables via the environment. This
+      # script never prints them and never puts them on the command line.
+      set -eu
+      MAPPER_B64='@@MAPPER_B64@@'
+      : "${DM_TARGET:?[darkmoon] ERROR: the 'target' input is required}"
+
+      # Optional CLI bootstrap (no secrets on the wire).
+      if [ -n "${DM_BOOTSTRAP_URL:-}" ] && ! command -v darkmoon-ci >/dev/null 2>&1; then
+        echo "[darkmoon] bootstrapping darkmoon-ci"
+        curl -fsSL "$DM_BOOTSTRAP_URL" -o /tmp/dm-install.sh
+        sh /tmp/dm-install.sh
+      fi
+      command -v darkmoon-ci >/dev/null 2>&1 || { echo "[darkmoon] ERROR: darkmoon-ci not on PATH (use an image that bundles it or set bootstrap-url)"; exit 2; }
+      command -v python3 >/dev/null 2>&1 || { echo "[darkmoon] ERROR: python3 (>=3.8) required for report mapping"; exit 2; }
+
+      mkdir -p "$DM_OUTPUT_DIR"
+      printf '%s' "$MAPPER_B64" | python3 -c "import sys,base64;open('$DM_OUTPUT_DIR/dm_report.py','wb').write(base64.b64decode(sys.stdin.read()))"
+
+      # Build the argv safely (no eval, no word-splitting of the target).
+      set -- scan --mode "$DM_MODE" --target "$DM_TARGET" --output-dir "$DM_OUTPUT_DIR" --fail-on "$DM_FAIL_ON" --format json,markdown --redact
+      [ -n "${DM_BASE_URL:-}" ] && set -- "$@" --base-url "$DM_BASE_URL"
+      [ -n "${DM_FOCUS:-}" ]    && set -- "$@" --focus "$DM_FOCUS"
+      [ -n "${DM_SEVERITY:-}" ] && set -- "$@" --severity "$DM_SEVERITY"
+      [ -n "${DM_TIMEOUT:-}" ]  && set -- "$@" --timeout "$DM_TIMEOUT"
+
+      echo "[darkmoon] running scan (mode=$DM_MODE, fail-on=$DM_FAIL_ON)"
+      set +e
+      darkmoon-ci "$@"
+      rc=$?
+      set -e
+      echo "[darkmoon] darkmoon-ci exit code: $rc"
+
+      # Always map whatever native JSON exists into GitLab report formats.
+      if [ "${DM_EMIT_SAST}" = "true" ]; then
+        python3 "$DM_OUTPUT_DIR/dm_report.py" \
+          --findings "$DM_OUTPUT_DIR/darkmoon-findings.json" \
+          --codequality gl-code-quality-report.json \
+          --sast gl-sast-report.json \
+          || echo "[darkmoon] WARN: mapping produced no reports"
+      else
+        python3 "$DM_OUTPUT_DIR/dm_report.py" \
+          --findings "$DM_OUTPUT_DIR/darkmoon-findings.json" \
+          --codequality gl-code-quality-report.json \
+          || echo "[darkmoon] WARN: mapping produced no reports"
+        # Keep the declared SAST artifact path satisfied with a valid empty report.
+        python3 "$DM_OUTPUT_DIR/dm_report.py" --findings /dev/null \
+          --codequality /tmp/_dm_cq_ignore.json --sast gl-sast-report.json || true
+      fi
+
+      # Threat model §4: only publish the full report if explicitly opted in.
+      if [ "${DM_EXPOSE_FULL}" != "true" ]; then
+        rm -f "$DM_OUTPUT_DIR"/darkmoon-report.md "$DM_OUTPUT_DIR"/darkmoon-findings.json 2>/dev/null || true
+      fi
+      rm -f "$DM_OUTPUT_DIR/dm_report.py" /tmp/_dm_cq_ignore.json 2>/dev/null || true
+
+      # Propagate the scan's semantic exit code so the gate (4) fails the job
+      # unless allow_failure_exit_codes lists it.
+      exit $rc
+  artifacts:
+    when: always
+    expire_in: $[[ inputs.artifacts-expire-in ]]
+    reports:
+      codequality: gl-code-quality-report.json
+      sast: gl-sast-report.json
+    paths:
+      - gl-code-quality-report.json
+      - gl-sast-report.json
+      - "$[[ inputs.output-dir ]]/"
+  allow_failure:
+    exit_codes: $[[ inputs.allow_failure_exit_codes ]]
