@@ -1,5 +1,14 @@
 # Darkmoon — GitLab CI/CD Component
 
+
+## ⭐ Star Darkmoon
+
+Darkmoon is open-source and community-driven — **a star genuinely helps us.** If this is useful to you, please star:
+
+[![Star the Darkmoon core](https://img.shields.io/github/stars/ASCIT31/Dark-Moon?style=social&label=Star%20the%20Darkmoon%20core)](https://github.com/ASCIT31/Dark-Moon)
+
+And the ecosystem: [GitHub Action](https://github.com/ASCIT31/darkmoon-action) · [GitLab](https://github.com/ASCIT31/darkmoon-gitlab) · [Jenkins](https://github.com/ASCIT31/darkmoon-jenkins) · [VS Code](https://github.com/ASCIT31/darkmoon-vscode) · [JetBrains](https://github.com/ASCIT31/darkmoon-jetbrains) · [Client & CLI](https://github.com/ASCIT31/darkmoon-client)
+
 Run an AI-driven Darkmoon security assessment from a GitLab pipeline and surface
 the results natively in GitLab: a **Code Quality** report (findings in the merge
 request widget and the pipeline **Code Quality** tab) and, optionally, a **SAST**
