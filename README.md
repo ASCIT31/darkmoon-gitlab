@@ -1,5 +1,7 @@
 # Darkmoon — GitLab CI/CD Component
 
+> **📦 Marketplace status:** Live on the [GitLab CI/CD Catalog](https://gitlab.com/explore/catalog/Dark-Moon-X/darkmoon-scan).
+
 
 ## ⭐ Darkmoon ecosystem
 
