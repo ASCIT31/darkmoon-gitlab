@@ -195,3 +195,18 @@ skeleton, then re-render.
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+
+## 🎥 Video tutorial
+
+[![Watch the Darkmoon + GitLab CI/CD tutorial on YouTube](https://img.youtube.com/vi/ui7NHD41cMM/maxresdefault.jpg)](https://youtu.be/ui7NHD41cMM)
+
+▶ **[Watch the full Darkmoon + GitLab CI/CD tutorial on YouTube](https://youtu.be/ui7NHD41cMM)** — real setup, end to end.
+
+## Darkmoon ecosystem
+
+Darkmoon is an open-source, AI-powered penetration testing platform. It runs a full autonomous assessment and this integration brings the results into your GitLab CI/CD workflow.
+
+- ⭐ **Flagship (star it):** https://github.com/ASCIT31/Dark-Moon
+- 📚 **Docs:** https://docs.dark-moon.org
+- 🌐 **Website:** https://dark-moon.org
+- 🔗 **Related integrations:** [GitHub Actions](https://github.com/ASCIT31/darkmoon-action) · [Jenkins](https://github.com/ASCIT31/darkmoon-jenkins) 
